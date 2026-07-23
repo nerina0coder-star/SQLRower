@@ -139,15 +139,20 @@ class SelectionParser(AbstractParser):
                     not any(spl.startswith("t.") for spl in splitted):
                 raise InvalidQueryException(query)
 
-            tableq = list(filter(lambda x: x.startswith("t."), splitted))
-            args = list(filter(lambda x: x.startswith(":") and
-                                         x.endswith(":") and
-                                         x[1:-1] in kwargs.keys(), splitted))
-            normalv = list(filter(lambda x:
-                                  not x.startswith("t.") and
-                                  not (x.startswith(":") and x.endswith(":")) and
-                                  x not in self.mapping.keys()
-                                  , splitted))
+            tq_lambda = lambda x: x.startswith("t.")
+            args_lambda = lambda x: x.startswith(":") and \
+                                     x.endswith(":") and \
+                                     x[1:-1] in kwargs.keys() # To exclude the colons
+            nv_lambda = lambda x: \
+                              not tq_lambda(x) and \
+                              not args_lambda(x) and \
+                              x not in self.mapping.keys()
+
+            tableq = list(filter(tq_lambda, splitted))
+            args = list(filter(args_lambda, splitted))
+            normalv = list(filter(nv_lambda, splitted))
+
+            del tq_lambda, nv_lambda, args_lambda # PEP 8 says not to use lambdas as variables, but we delete it. Fair use!
 
             tableq_executed = []
             args_executed = []
@@ -157,7 +162,7 @@ class SelectionParser(AbstractParser):
                 tableq_executed.append(getattr(self.table.c, q[2:]))
 
             for a in args:
-                args_executed.append(kwargs[a[1:-1]])
+                args_executed.append(kwargs[a[1:-1]]) # Colons excluded
 
             for n in normalv:
                 normalv_executed.append(self.getvalue(n))
