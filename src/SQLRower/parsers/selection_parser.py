@@ -142,7 +142,7 @@ class SelectionParser(AbstractParser):
             tableq = list(filter(lambda x: x.startswith("t."), splitted))
             args = list(filter(lambda x: x.startswith(":") and
                                          x.endswith(":") and
-                                         x in kwargs.keys(), splitted))
+                                         x[1:-1] in kwargs.keys(), splitted))
             normalv = list(filter(lambda x:
                                   not x.startswith("t.") and
                                   not (x.startswith(":") and x.endswith(":")) and
@@ -157,7 +157,7 @@ class SelectionParser(AbstractParser):
                 tableq_executed.append(getattr(self.table.c, q[2:]))
 
             for a in args:
-                args_executed.append(kwargs[a])
+                args_executed.append(kwargs[a[1:-1]])
 
             for n in normalv:
                 normalv_executed.append(self.getvalue(n))

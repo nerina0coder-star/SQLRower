@@ -124,9 +124,10 @@ class TestSQLiteExecutor(unittest.TestCase):
                 primary_key_name="id"
             )
 
-            result = executor.select("t.username ilike t%st",
+            result = executor.select("t.username ilike :tst:",
                             table_name="test",
-                            logic="and")
+                            logic="and",
+                            tst="t%st") # Parameterized querying.
 
             self.assertIsInstance(result, list)
             self.assertEqual(len(result), 1)
