@@ -1,0 +1,5 @@
+/test_dbs/
+/.git/
+/.idea/
+/.venv/
+/__pycache__/
