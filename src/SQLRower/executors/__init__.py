@@ -1,3 +1,3 @@
-from .sqlite_executor import SQLiteExecutor
+from .executor import Executor
 
-__all__ = ["SQLiteExecutor"]
+__all__ = ["Executor"]

@@ -1,10 +1,12 @@
 from datetime import datetime
+from functools import lru_cache
 from typing import Literal, Any
 
 from sqlalchemy import Integer, String, Boolean, DateTime, Column, Table, Engine, BigInteger, \
-    SmallInteger, REAL, Double, DECIMAL
-from sqlalchemy.orm import DeclarativeBase
+    SmallInteger, REAL, Double, DECIMAL, VARCHAR
+from sqlalchemy.orm import DeclarativeMeta
 
+from SQLRower.masters.abstract_master import AbstractMaster
 from SQLRower.parsers.abstract_parser import AbstractParser
 from SQLRower.typing import TypingColumn
 from SQLRower.validator import validator
@@ -12,8 +14,33 @@ from SQLRower.validator import validator
 
 class TableParser(AbstractParser):
 
-    def __init__(self, base: DeclarativeBase, engine: Engine):
-        self.base: DeclarativeBase = base
+    def __init__(self, base: DeclarativeMeta, engine: Engine, master: AbstractMaster):
+        """
+        Initializes a table parser.
+
+        :param base: a declarative base to work on.
+        :param engine: an engine to work on.
+        :param master: an abstract master to use the knowledge of.
+        """
+        validator(
+            (
+                "base",
+                base,
+                DeclarativeMeta
+            ),
+            (
+                "engine",
+                engine,
+                Engine
+            ),
+            (
+                "master",
+                master,
+                AbstractMaster
+            )
+        )
+        self.master: AbstractMaster = master
+        self.base: DeclarativeMeta = base
         self.engine: Engine = engine
 
     def __call__(self, queries: TypingColumn|list[TypingColumn]|list[list[TypingColumn]], **kwargs):
@@ -135,6 +162,15 @@ class TableParser(AbstractParser):
                         )
                     ),
                     (
+                        "name",
+                        column.get("name"),
+                        str,
+                        (
+                            (lambda: len(column.get("name")) > 0),
+                            "The name must be at least 1 charcters long."
+                        )
+                    ),
+                    (
                         "type",
                         column.get("type"),
                         tuple(type(i) for i in supported_types),
@@ -192,6 +228,7 @@ class TableParser(AbstractParser):
         )
 
 
+    @lru_cache(32)
     def general(self, options: dict) -> dict:
         """
         Helps to parse general options.
@@ -244,19 +281,10 @@ class TableParser(AbstractParser):
                 continue
 
             if av == "limit":
-                validator(
-                    (
-                        "limit",
-                        options[av],
-                        available[av],
-                        (
-                            (lambda: options[av] <= 65535),
-                            "Limit set too big for string."
-                        )
-                    )
-                )
+                if self.master.limit("str", options[av]):
+                    raise ValueError("The given limit bypasses the database's limit. (String Column)")
 
-                out["type"] = String(options[av])
+                out["type"] = VARCHAR(options[av])
                 continue
 
             extra_val = (
@@ -317,15 +345,8 @@ class TableParser(AbstractParser):
                 continue
 
             if av == "limit":
-                validator(
-                    "limit",
-                    options[av],
-                    available[av],
-                    (
-                        (lambda: options[av] <= 2**63-1),
-                        "Cannot set the limit to 2^63-1+."
-                    )
-                )
+                if self.master.limit("int", options[av]):
+                    raise ValueError("The given limit bypasses the database's limit. (Integer Column)")
                 type_ = next(filter(lambda x: x[0](options[av]), type_mapping))
 
                 out["type"] = type_
@@ -383,15 +404,8 @@ class TableParser(AbstractParser):
                 continue
 
             if av == "precision":
-                validator(
-                    "precision",
-                    options[av],
-                    available[av],
-                    (
-                        (lambda: 24 >= options[av] > 0),
-                        "The precision must be a positive integer less than or equal to 24."
-                    )
-                )
+                if self.master.limit("float", options[av]):
+                    raise ValueError("The given precision bypasses the database's limit. (Float Column)")
 
                 type_ = next(filter(lambda x: x[0](options[av]), type_mapping))
 

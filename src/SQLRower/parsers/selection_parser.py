@@ -1,6 +1,5 @@
 from ast import literal_eval
 from typing import Any
-from warnings import warn
 
 from sqlalchemy import Table, Engine, Executable, and_, or_, select, table as t, MetaData
 
@@ -60,10 +59,14 @@ class SelectionParser(AbstractParser):
 
         logic(kwargs): Which logic to use. and: all conditions must be true. or: one of conditions must be true.
 
-        :param queries: The query to parse.
+        :param queries: The query to parse(Under no condition use like/ilike and %, use SelectionParser.all instead, or just write all as a query).
         :param kwargs: The arguments to give to the parser function(see: Parser.parser).
         :return: The executed query.
         """
+        # Handling special case
+        if isinstance(queries, str) and queries.strip().lower() == "all":
+            self.getall()
+        # Doing normal work
         logic = kwargs.get("logic")
         if isinstance(queries, str):
             queries = [queries]
@@ -106,7 +109,14 @@ class SelectionParser(AbstractParser):
 
         return rows
 
-
+    def getall(self):
+        """
+        An exceptional method used to select ALL columns of a table.
+        :return: The result of the selection.
+        """
+        with self.engine.connect() as conn:
+            result = conn.execute(statement=select(self.table))
+            return result.fetchall()
 
     def parser(self, queries: list[str], **kwargs) -> list[Executable]:
         """
@@ -189,8 +199,9 @@ class SelectionParser(AbstractParser):
         out: Any = item
         if not (self.autotype or isinstance(item, str)):
             return out
-
-        if item in ["True", "False"]:
+        if item == "None":
+            out = None
+        elif item in ["True", "False"]:
             out = literal_eval(item)
         elif item.isnumeric():
             out = int(item)
