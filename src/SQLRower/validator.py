@@ -39,9 +39,10 @@ def validator(*args):
             else:
                 raise ValueError("'wanted_type' must be type tuple")
 
-        if (checking is None and None not in wanted_type) or \
-                not isinstance(checking, wanted_type):
-            raise TypeError(f"{name} must be {wanted_type[0].__name__}{"".join(f" or {w.__name__}" for w in wanted_type[1:])}, got {type(checking).__name__} instead.")
+        if checking is None and None not in wanted_type: # Raise only if it's None and None is
+            rise(wanted_type=wanted_type, name=name, checking=checking)
+        elif checking is not None and not isinstance(checking, tuple(i for i in wanted_type if i is not None)): # Raise when it's not None and it's not in wanted
+            rise(wanted_type=wanted_type, name=name, checking=checking)
 
         if optional_value is not None and \
                 isinstance(optional_value, tuple) and \
@@ -49,3 +50,15 @@ def validator(*args):
                 callable(optional_value[0]):
             if not optional_value[0]():
                 raise ValueError(optional_value[1])
+
+def rise(*, wanted_type, name, checking):
+    """
+    Do not use, internal.
+    :param wanted_type: The types expected.
+    :param name: The name of the argument.
+    :param checking: The item given as the argument.
+    :raises TypeError: If checking is not in wanted_type.
+    """
+    wanted_type = tuple(i for i in wanted_type if i is not None)
+    raise TypeError(
+        f"{name} must be {wanted_type[0].__name__}{"".join(f" or {w.__name__}" for w in wanted_type[1:])}, got {type(checking).__name__} instead.")

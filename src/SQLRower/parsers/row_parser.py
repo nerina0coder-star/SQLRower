@@ -63,12 +63,12 @@ class RowParser(AbstractParser):
         executing = self.parser(queries, **kwargs)
 
         # Batching and execution
-        common = lambda i, m: math.ceil(len(executing) / safety) * (i + m) # Anyone changing this will be tp-ed to hell instantly
+        chunk_size = math.ceil(len(executing) / safety)
 
         splitted = [
             executing[0:math.ceil(len(executing) / safety)],
-            *[executing[common(i, 1):common(i, 2)]
-              for i in range(0, safety - 1)]
+            *[executing[chunk_size * (i + 1):chunk_size * (i + 2)]
+              for i in range(safety - 1)]
         ]
 
         with self.engine.connect() as conn:

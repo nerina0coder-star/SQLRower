@@ -1,6 +1,7 @@
-/test_dbs/
+test_dbs/
 /.git/
 /.idea/
 /.venv/
 __pycache__/
 pyproject.toml
+/dist

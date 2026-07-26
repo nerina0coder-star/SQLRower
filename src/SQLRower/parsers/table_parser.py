@@ -64,10 +64,12 @@ class TableParser(AbstractParser):
         for q in queries:
             tables.append(self.parser(q, **kwargs))
 
-        self.base.metadata.create_all(
-            self.engine,
-            tables
-        )
+        with self.engine.connect() as conn:
+            self.base.metadata.create_all(
+                self.engine,
+                tables
+            )
+            conn.commit() # just to make sure
 
     def parser(self,
                queries: list[TypingColumn],
@@ -228,7 +230,6 @@ class TableParser(AbstractParser):
         )
 
 
-    @lru_cache(32)
     def general(self, options: dict) -> dict:
         """
         Helps to parse general options.
