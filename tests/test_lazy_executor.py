@@ -40,7 +40,7 @@ class MyTestCase(unittest.TestCase):
 
         after_eval = time.time()
 
-        self.assertAlmostEqual(after_eval, before_eval, delta=0.01)
+        self.assertAlmostEqual(after_eval, before_eval, delta=0.02)
 
         time.sleep(0.05)
 

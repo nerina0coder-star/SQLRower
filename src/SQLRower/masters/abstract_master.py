@@ -30,3 +30,9 @@ class AbstractMaster(abc.ABC):
         :param given: The given limit.
         :return:
         """
+
+    @abc.abstractmethod
+    def reflection_options(self):
+        """
+        The arguments to pass to reflector. Such as Schema.
+        """

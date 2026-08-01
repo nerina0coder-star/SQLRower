@@ -38,7 +38,7 @@ class LazyExecutor(Executor):
         )
 
         if master is not None:
-            super().__init__(master) # Just to shut up the linter
+            super().__init__(master)
 
         self._executor = Executor(master) if executor is None else executor
         self._calls = []

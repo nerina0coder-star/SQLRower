@@ -33,12 +33,12 @@ class ReadOnlyExecutor:
         self._report_to = report_to
         self._master = master
         self._gettable = table_reflector
-        self._engine, self._session, self._meta = master.gettriple()
+        self._engine, self._session, self._Base = master.gettriple()
 
     def select(self, queries: str | Literal["all"] | list[str],
                /, *, table_name: str, logic: str, **kw):
         """
-        Select rows from a SQLite database.
+        Select rows from a database.
         :param queries: The selection queries to use. (Refer to SelectionParser.parser)
         :param table_name: The name of the table to select from.
         :param logic: The logic to use. OR:
@@ -57,7 +57,7 @@ class ReadOnlyExecutor:
 
     def select_all(self, *, table_name: str):
         """
-        Select all rows from a SQLite database.
+        Select all rows from a database.
 
         :param table_name: The name of the table to select from.
         :return: The result of the selection.

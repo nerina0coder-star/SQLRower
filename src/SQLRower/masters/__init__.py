@@ -1,6 +1,7 @@
 from typing import Literal
 
 from .abstract_master import AbstractMaster
+from .postgresql_master import PostgresqlMaster
 from .sqlite_master import SQLiteMaster
 
 def automaster(type_: Literal["SQLite","Postgres","MySQL","Oracle",], raw: bool = False,
@@ -14,7 +15,7 @@ def automaster(type_: Literal["SQLite","Postgres","MySQL","Oracle",], raw: bool 
     """
     mapping = {
         "SQLite": SQLiteMaster,
-        ...: ...
+        "PostgreSQL": PostgresqlMaster
     }
     mapped = mapping[type_]
     if raw:

@@ -1,9 +1,7 @@
 from datetime import datetime
-from functools import lru_cache
 from typing import Literal, Any
 
-from sqlalchemy import Integer, String, Boolean, DateTime, Column, Table, Engine, BigInteger, \
-    SmallInteger, REAL, Double, DECIMAL, VARCHAR
+from sqlalchemy import Integer, String, Boolean, DateTime, Column, Table, Engine, Double, VARCHAR, DECIMAL
 from sqlalchemy.orm import DeclarativeMeta
 
 from SQLRower.masters.abstract_master import AbstractMaster
@@ -43,7 +41,7 @@ class TableParser(AbstractParser):
         self.base: DeclarativeMeta = base
         self.engine: Engine = engine
 
-    def __call__(self, queries: TypingColumn|list[TypingColumn]|list[list[TypingColumn]], **kwargs):
+    def __call__(self, queries: TypingColumn | list[TypingColumn] | list[list[TypingColumn]], **kwargs):
         """
         Creates a tables based on the given queries. For more information please refer to TableParser.parser.
 
@@ -66,10 +64,10 @@ class TableParser(AbstractParser):
 
         with self.engine.connect() as conn:
             self.base.metadata.create_all(
-                self.engine,
-                tables
+                conn,
+                tables,
             )
-            conn.commit() # just to make sure
+            conn.commit()  # just to make sure
 
     def parser(self,
                queries: list[TypingColumn],
@@ -106,6 +104,16 @@ class TableParser(AbstractParser):
 
                 "primary_key": False,
             }
+        }, {
+            "name": "salary",
+
+            "type": float,
+
+            "options": {
+                "decimal-places": 3, # meaning 3 out of all 10 digits must be after decimal.
+
+                "precision": 10,
+            }
         }
 
         :param queries: a structured dict.
@@ -139,7 +147,6 @@ class TableParser(AbstractParser):
 
         type_mapping = dict(zip(supported_types, functions))
 
-
         required = [
             "name",
             "type",
@@ -149,11 +156,11 @@ class TableParser(AbstractParser):
 
         for column in queries:
 
-            column: dict[Literal["name", "type", "options"], Any] = column # Type hint
+            column: dict[Literal["name", "type", "options"], Any] = column  # Type hint
 
             # Validating
             validator \
-                (
+                    (
                     (
                         "column",
                         column,
@@ -177,7 +184,8 @@ class TableParser(AbstractParser):
                         column.get("type"),
                         tuple(type(i) for i in supported_types),
                         (
-                            (lambda: column.get("type") in supported_types or column["type"] in supported_strings.keys()),
+                            (lambda: column.get("type") in supported_types or column[
+                                "type"] in supported_strings.keys()),
                             ("The type of the column must be a known type, such as: "
                              f"{list(supported_strings.keys())[0]}"
                              "".join(f", {i}" for i in list(supported_strings.keys())[1:]))
@@ -228,7 +236,6 @@ class TableParser(AbstractParser):
             self.base.metadata,
             *columns
         )
-
 
     def general(self, options: dict) -> dict:
         """
@@ -285,19 +292,19 @@ class TableParser(AbstractParser):
                 if self.master.limit("str", options[av]):
                     raise ValueError("The given limit bypasses the database's limit. (String Column)")
 
-                out["type"] = VARCHAR(options[av])
+                out["type"] = self.master.mapping("str", options[av])
                 continue
 
             extra_val = (
-                        (lambda: len(options[av]) <= options["limit"]),
-                        "The default must be less than the limit."
-                    ) if av == "default" and options.get("limit") is not None else None
+                (lambda: len(options[av]) <= options["limit"]),
+                "The default must be less than the limit."
+            ) if av == "default" and options.get("limit") is not None else None
 
             validating = [
-                    av,
-                    options[av],
-                    available[av],
-                ]
+                av,
+                options[av],
+                available[av],
+            ]
 
             if extra_val is not None:
                 validating.append(extra_val)
@@ -314,7 +321,6 @@ class TableParser(AbstractParser):
             out["type"] = String
 
         return out
-
 
     def integer(self, options: dict) -> dict:
         """
@@ -333,12 +339,6 @@ class TableParser(AbstractParser):
             "default": int,
         }
 
-        type_mapping = [
-            [lambda x: -32_768 < x < 32_767, SmallInteger],
-            [lambda x: -2**31 < x < 2**31-1, Integer],
-            [lambda x: True, BigInteger]
-        ]
-
         out = {}
 
         for av in available.keys():
@@ -348,9 +348,10 @@ class TableParser(AbstractParser):
             if av == "limit":
                 if self.master.limit("int", options[av]):
                     raise ValueError("The given limit bypasses the database's limit. (Integer Column)")
-                type_ = next(filter(lambda x: x[0](options[av]), type_mapping))
+                type_ = self.master.mapping("str", options[av])
 
                 out["type"] = type_
+                continue
 
             extra_val = (
                 (lambda: options[av] > options["limit"]),
@@ -386,17 +387,12 @@ class TableParser(AbstractParser):
         The ones accepted are:
             - precision: The precision of the float. (Helps in deciding FLOAT or REAL).
             - default: The default value for the column.
+            - decimal-places: The places after the decimal(default is DB default, can cause error)
         """
         available = {
-            "precision": float,
+            "precision": int,
             "default": float,
         }
-
-        type_mapping = [
-            (lambda x: 0 < x <= 7, REAL),
-            (lambda x: 15 < x <= 310, Double),
-            (lambda x: True, DECIMAL),
-        ]
 
         out = {}
 
@@ -408,15 +404,18 @@ class TableParser(AbstractParser):
                 if self.master.limit("float", options[av]):
                     raise ValueError("The given precision bypasses the database's limit. (Float Column)")
 
-                type_ = next(filter(lambda x: x[0](options[av]), type_mapping))
+                type_ = self.master.mapping("float", options[av])
+
+                if type_ == DECIMAL or isinstance(type_, DECIMAL):
+                    type_ = DECIMAL(options[av], options.get("decimal-places"))
 
                 out["type"] = type_
+                continue
 
             extra_val = (
                 (lambda: options[av] < options["precision"]),
                 "The default must be less than the precision."
             ) if av == "default" and options.get("precision") is not None else None
-
 
             validating = [
                 av,
@@ -437,8 +436,6 @@ class TableParser(AbstractParser):
             out["type"] = Double
 
         return out
-
-
 
     def boolean(self, options: dict) -> dict:
         """

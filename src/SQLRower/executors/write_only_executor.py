@@ -35,19 +35,19 @@ class WriteOnlyExecutor:
         self._report_to = report_to
         self._gettable = table_reflector
         self._master = master
-        self._engine, self._session, self._meta = master.gettriple()
+        self._engine, self._session, self._Base = master.gettriple()
 
     def mktable(self,
                 queries: dict | list[dict] | list[list[dict]] | TypingColumn | list[TypingColumn] | list[
                     list[TypingColumn]],
                 /, *, name: str):
         """
-        Creates a table in the SQLite database.
+        Creates a table in the database.
 
         :param queries: The tables to create. (Refer to TableParser.parser)
         :param name: The name of the table.
         """
-        table = TableParser(self._meta, self._engine, self._master)
+        table = TableParser(self._Base, self._engine, self._master)
         try:
             table(queries, table_name=name)
         except Exception as e:

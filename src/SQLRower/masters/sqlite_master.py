@@ -72,16 +72,16 @@ class SQLiteMaster(AbstractMaster):
         }
 
         self._limiter = {
-            "int": lambda x: 9.22e+18 > x > -9.22e+18,
-            "str": lambda x: x < 1_000_000_000,
+            "int": lambda x: 9.22e+18 > int(x) > -9.22e+18,
+            "str": lambda x: int(x) < 1_000_000_000,
             "float": lambda x: False,
         }
 
     def gettriple(self) -> tuple[Engine, sessionmaker, DeclarativeMeta]:
         engine = create_engine(f"sqlite:///{self.path}")
         session = sessionmaker(bind=engine)
-        meta: DeclarativeMeta = declarative_base()
-        return engine, session, meta
+        Base: DeclarativeMeta = declarative_base()
+        return engine, session, Base
 
     def limit(self, type_: Literal["int", "str", "float"]|Any, given: int) -> bool:
         """
@@ -125,10 +125,11 @@ class SQLiteMaster(AbstractMaster):
         if item == "SPECIAL": # Strings are special
             return VARCHAR(given) if given is not None else Text
 
-        self.limit(type_, given)
-
-        for k, v in item.items():
+        for k, v in reversed(item.items()):
             if v(given):
                 return k
 
         raise ValueError("Unknown type: ", type_)
+
+    def reflection_options(self):
+        return {}

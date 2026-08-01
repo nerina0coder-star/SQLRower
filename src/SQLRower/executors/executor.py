@@ -31,10 +31,10 @@ class Executor(ReadOnlyExecutor, WriteOnlyExecutor):
         if report_to and not callable(report_to):
             raise TypeError("report_to must be a callable.")
 
-        engine, session, meta = master.gettriple()
+        engine, session, Base = master.gettriple()
 
-        def default_report(*, _, e):
-            raise e
+        def default_report(_, e, /):
+            raise e from e
 
         super().__init__(master, self._gettable, report_to=report_to if report_to is not None else default_report)
 
@@ -52,8 +52,8 @@ class Executor(ReadOnlyExecutor, WriteOnlyExecutor):
         try:
             meta = MetaData()
 
-            table = Table(table_name, meta, autoload_with=self._engine)
+            table = Table(table_name, meta, autoload_with=self._engine, **self._master.reflection_options())
         except:
-            warn("Could not create Table, make sure the table exists.")
+            warn("Could not reflect Table, make sure the table exists.")
             raise
         return table
