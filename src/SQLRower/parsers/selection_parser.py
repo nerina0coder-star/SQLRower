@@ -1,7 +1,7 @@
 from ast import literal_eval
 from typing import Any
 
-from sqlalchemy import Table, Engine, Executable, and_, or_, select, table as t, MetaData
+from sqlalchemy import Table, Engine, Executable, and_, or_, select
 
 from SQLRower.exceptions.InvalidQueryException import InvalidQueryException
 from SQLRower.parsers.abstract_parser import AbstractParser

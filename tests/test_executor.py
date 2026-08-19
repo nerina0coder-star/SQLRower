@@ -10,7 +10,7 @@ class TestExecutor(unittest.TestCase):
     test_path = "./test_dbs/sqlite/"
 
     def test_table(self):
-        sqlite_executor = Executor(SQLiteMaster(self.test_path + "test.db"))
+        _sqlite_executor = Executor(SQLiteMaster(self.test_path + "test.db"))
         # Or, if you want it in-memory.
         shutil.rmtree(self.test_path)
         sqlite_executor = Executor(SQLiteMaster("m!"))

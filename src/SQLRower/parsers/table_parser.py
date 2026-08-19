@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, Any
 
-from sqlalchemy import Integer, String, Boolean, DateTime, Column, Table, Engine, Double, VARCHAR, DECIMAL
+from sqlalchemy import Integer, String, Boolean, DateTime, Column, Table, Engine, Double, DECIMAL
 from sqlalchemy.orm import DeclarativeMeta
 
 from SQLRower.masters.abstract_master import AbstractMaster
@@ -467,8 +467,6 @@ class TableParser(AbstractParser):
         available = {
             "default": datetime,
         }
-
-        type_mapping = []
 
         out = {}
 

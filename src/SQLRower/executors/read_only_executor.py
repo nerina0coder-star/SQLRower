@@ -81,7 +81,7 @@ class ReadOnlyExecutor:
         """
         validator(("table_name", table_name, str))
         cols = self._gettable(table_name).c
-        for i in cols:
+        for i in cols: # type: Ignore
             yield getattr(i, "name", None)
 
     def columns(self, *, table_name: str):
