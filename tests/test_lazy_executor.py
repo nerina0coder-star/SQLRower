@@ -48,7 +48,7 @@ class MyTestCase(unittest.TestCase):
             table_name="test"
         )
 
-        self.assertEqual(result, ["id"])
+        self.assertEqual(result[0].name, "id")
 
         result = lexecutor.select_all(
             table_name="test",

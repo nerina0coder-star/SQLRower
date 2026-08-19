@@ -1,10 +1,11 @@
-from typing import Callable, Literal
+from typing import Callable, Literal, Any, Generator
 
-from sqlalchemy import Table
+from sqlalchemy import Table, Column
 
 from SQLRower.executors.abstract_only_executor import AbstractOnlyExecutor
 from SQLRower.masters import AbstractMaster
 from SQLRower.parsers import SelectionParser
+from SQLRower.utils import ColumnReference
 from SQLRower.validator import validator
 
 
@@ -73,20 +74,23 @@ class ReadOnlyExecutor:
             return False
         return selector.getall()
 
-    def c(self, *, table_name: str):
+    def c(self, *, table_name: str) -> Generator[ColumnReference, Any, None]:
         """
         Returns the columns as generator.
 
         :param table_name: The name of the table.
+        :returns: A generator of ColumnReferences.
         """
         validator(("table_name", table_name, str))
         cols = self._gettable(table_name).c
         for i in cols: # type: Ignore
-            yield getattr(i, "name", None)
+            i: Column = i
+            yield ColumnReference(i, i.name)
 
-    def columns(self, *, table_name: str):
+    def columns(self, *, table_name: str) -> list[ColumnReference]:
         """
         Returns a list of columns from the table.
         :param table_name: The name of the table.
+        :returns: A list of ColumnReferences.
         """
         return list(self.c(table_name=table_name))

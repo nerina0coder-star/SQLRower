@@ -5,10 +5,9 @@ from sqlalchemy import Table
 from SQLRower.executors.abstract_only_executor import AbstractOnlyExecutor
 from SQLRower.masters import AbstractMaster
 from SQLRower.parsers import RowParser, TableParser
-from SQLRower.typing import TypingColumn
-from SQLRower.typing.row import TypingRow
+from SQLRower.utils.row import RowDetails
 from SQLRower.validator import validator
-
+from SQLRower.utils import Column as UtilColumn, Row
 
 class WriteOnlyExecutor:
     def __init__(self, master: AbstractMaster,
@@ -38,18 +37,18 @@ class WriteOnlyExecutor:
         self._engine, self._session, self._Base = master.gettriple()
 
     def mktable(self,
-                queries: dict | list[dict] | list[list[dict]] | TypingColumn | list[TypingColumn] | list[
-                    list[TypingColumn]],
+                queries: UtilColumn | dict | list[dict | UtilColumn],
                 /, *, name: str):
         """
         Creates a table in the database.
 
         :param queries: The tables to create. (Refer to TableParser.parser)
         :param name: The name of the table.
+        :returns: The created tables.
         """
         table = TableParser(self._Base, self._engine, self._master)
         try:
-            table(queries, table_name=name)
+            return table(queries, table_name=name)
         except Exception as e:
             self._report_to("mktable", e)
 
@@ -66,16 +65,16 @@ class WriteOnlyExecutor:
         :param table_name: The name of our table.
         :param primary_key_name: The name of the primary key.
         """
-        giving = [
+        giving = Row(
             operation_type,
-            {
-                "primary": row_primary,
-                "data": row_data
-            }
-        ]
-        self.makerow(giving, table_name=table_name, primary_key_name=primary_key_name)
+            RowDetails(
+                row_primary,
+                row_data
+            )
+        )
+        self.makerow([giving], table_name=table_name, primary_key_name=primary_key_name)
 
-    def makerow(self, queries: list[str | TypingRow],
+    def makerow(self, queries: list[Row],
                 /, *, table_name: str, primary_key_name: str,
                 batches: int = 1):
         """

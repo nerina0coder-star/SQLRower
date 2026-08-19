@@ -194,7 +194,6 @@ class PostgresqlMaster(AbstractMaster):
 
         type_ = self._all_types[type_.lower()]
         if isinstance(type_, dict):
-            print(type_)
             for k, v in type_.items():
                 if v(given):
                     return k

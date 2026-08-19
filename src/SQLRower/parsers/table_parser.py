@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import Literal, Any
 
-from sqlalchemy import Integer, String, Boolean, DateTime, Column, Table, Engine, Double, DECIMAL
+from sqlalchemy import Integer, String, Boolean, DateTime, Column, Table, Engine, Double, DECIMAL, ForeignKey
 from sqlalchemy.orm import DeclarativeMeta
 
 from SQLRower.masters.abstract_master import AbstractMaster
 from SQLRower.parsers.abstract_parser import AbstractParser
-from SQLRower.typing import TypingColumn
+from SQLRower.utils import ColumnReference, Column as UtilColumn
 from SQLRower.validator import validator
 
 
@@ -41,23 +41,25 @@ class TableParser(AbstractParser):
         self.base: DeclarativeMeta = base
         self.engine: Engine = engine
 
-    def __call__(self, queries: TypingColumn | list[TypingColumn] | list[list[TypingColumn]], **kwargs):
+    def __call__(self, queries: UtilColumn | dict | list[UtilColumn | dict] | list[list[UtilColumn | dict]], **kwargs):
         """
         Creates a tables based on the given queries. For more information please refer to TableParser.parser.
 
         queries(parameter): Structured details of each column.
-            - Can be a dict for a table with a single column,
-            - a list of dicts for a table with multiple columns,
-            - or a list of lists of dicts for multiple tables with multiple columns.
+            - Can be a Column for a table with a single column,
+            - a list of Column for a table with multiple columns,
+            - or a list of lists of Column for multiple tables with multiple columns.
         :param kwargs: Include the table name here.
+        :returns: The created tables.
         """
-        if isinstance(queries, dict):
+        if isinstance(queries, (UtilColumn, dict)):
             queries = [[queries]]
 
         if not all(isinstance(i, list) for i in queries):
             queries = [queries]
 
         tables = []
+        queries: list[list[UtilColumn]]
 
         for q in queries:
             tables.append(self.parser(q, **kwargs))
@@ -69,8 +71,10 @@ class TableParser(AbstractParser):
             )
             conn.commit()  # just to make sure
 
+        return tables
+
     def parser(self,
-               queries: list[TypingColumn],
+               queries: list[UtilColumn],
                **kwargs) -> Table:
         """
         Parses the given queries.
@@ -114,6 +118,16 @@ class TableParser(AbstractParser):
 
                 "precision": 10,
             }
+        }, {
+            "name": "facility",
+
+            "type": str,
+
+            "options": {
+                "foreign": "facilities.name", # Note that the using foreign key must be unique or primary key.
+                And that the foreign must be a SQLRower.utils.ColumnReference or string. Column References
+                Can be accessed via the executor's "c" or "columns" method.
+            }
         }
 
         :param queries: a structured dict.
@@ -121,6 +135,8 @@ class TableParser(AbstractParser):
         :return:
         """
         # Creating allowed types
+        if not all(isinstance(i, dict) for i in queries):
+            queries = list(dict(q) for q in queries)
 
         supported_strings = {
             "int": int,
@@ -176,7 +192,7 @@ class TableParser(AbstractParser):
                         str,
                         (
                             (lambda: len(column.get("name")) > 0),
-                            "The name must be at least 1 charcters long."
+                            "The name must be at least 1 characters long."
                         )
                     ),
                     (
@@ -210,16 +226,20 @@ class TableParser(AbstractParser):
 
             base = self.general(options)
 
+            for k, v in self.foreign(options):
+                base[k] = v
+
             for k, v in func(options).items():
                 if k == "kwargs":
                     for k2, v2 in v.items():
                         base.setdefault(k, {})[k2] = v2
                 base[k] = v
 
-            try:
+
+            if "foreign" not in base:
                 columns.append(Column(name, base["type"], **base["kwargs"]))
-            except:
-                raise
+            else:
+                columns.append(Column(name, base["type"], base["foreign"], **base["kwargs"]))
         # Validating table name
         validator(
             (
@@ -267,6 +287,33 @@ class TableParser(AbstractParser):
             kwargs[av] = options[av]
 
         return {"kwargs": kwargs}
+
+    def foreign(self, options: dict):
+        """
+        Helps to parse general options.
+
+        options(dict): The options available for the column.
+
+        The ones accepted are:
+            - foreign: must be a column reference or string reference.
+        """
+
+        if options is None:
+            return {}
+
+        if "foreign" in options:
+            if not isinstance(options["foreign"], ColumnReference | str):
+                raise ValueError("Expected a column reference or string reference for the foreign key.")
+
+            foreign_key: ColumnReference | str = options["foreign"]
+
+            return {
+                "foreign": ForeignKey(foreign_key.name
+                                      if isinstance(foreign_key, ColumnReference)
+                                      else foreign_key),
+            }
+
+        return {}
 
     def string(self, options: dict) -> dict:
         """

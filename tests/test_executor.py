@@ -3,7 +3,6 @@ import unittest
 
 from SQLRower.executors.executor import Executor
 from SQLRower.masters import SQLiteMaster
-from SQLRower.typing import TypingColumn
 
 
 class TestExecutor(unittest.TestCase):
@@ -22,18 +21,18 @@ class TestExecutor(unittest.TestCase):
             "salary": float
         }
 
-        new_col: TypingColumn = {
+        new_col = {
             "name": "id",
             "type": int,
             "options": {
                 "primary_key": True,
                 "unique": True,
             }
-        } # Instead of passing the object directly, which sometimes make the linter picky, just type-hint the dict to make the linter understand.
+        }
         cols.append(new_col)
 
         for k, v in details.items():
-            new_col: TypingColumn = {
+            new_col = {
                 "name": k,
                 "type": v,
             }
@@ -45,7 +44,7 @@ class TestExecutor(unittest.TestCase):
     def test_row(self):
         sqlite_executor = Executor(SQLiteMaster("m!"))
 
-        col: TypingColumn = {
+        col = {
             "name": "id",
             "type": int,
             "options": {
@@ -86,7 +85,7 @@ class TestExecutor(unittest.TestCase):
     def test_select(self):
         executor = Executor(SQLiteMaster("m!"))
 
-        col: TypingColumn = {
+        col = {
             "name": "id",
             "type": int,
             "options": {
@@ -95,7 +94,7 @@ class TestExecutor(unittest.TestCase):
             }
         }
 
-        col2: TypingColumn = {
+        col2 = {
             "name": "username",
             "type": str,
             "options": {
@@ -175,4 +174,4 @@ class TestExecutor(unittest.TestCase):
         lst = executor.columns(table_name="test")
         for i in lst:
             self.assertIsNotNone(i)
-            self.assertIn(i, ["id", *details.keys()])
+            self.assertIn(i.name, ["id", *details.keys()])

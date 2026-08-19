@@ -3,6 +3,7 @@ from typing import Callable
 from warnings import warn
 
 from sqlalchemy import MetaData, Table
+from sqlalchemy.exc import NoSuchTableError
 
 from SQLRower.executors.read_only_executor import ReadOnlyExecutor
 from SQLRower.executors.write_only_executor import WriteOnlyExecutor
@@ -53,7 +54,7 @@ class Executor(ReadOnlyExecutor, WriteOnlyExecutor):
             meta = MetaData()
 
             table = Table(table_name, meta, autoload_with=self._engine, **self._master.reflection_options())
-        except:
+        except NoSuchTableError:
             warn("Could not reflect Table, make sure the table exists.")
-            raise
+            raise # Caught only for the warning
         return table

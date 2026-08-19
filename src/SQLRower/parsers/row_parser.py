@@ -3,7 +3,7 @@ import math
 from sqlalchemy import Executable, Table, insert, update, delete, Engine, select
 
 from SQLRower.parsers.abstract_parser import AbstractParser
-from SQLRower.typing.row import TypingRow
+from SQLRower.utils import Row
 from SQLRower.validator import validator
 
 
@@ -47,15 +47,15 @@ class RowParser(AbstractParser):
                                  and column_id > 0
                                  )
 
-    def __call__(self, queries: list[str|TypingRow] | list[list[str|TypingRow]], **kwargs):
+    def __call__(self, queries: list[Row], **kwargs):
         """
         Executes the given queries. For more details, refer to RowParser.parser.
         :param queries: The queries to execute.
         :param kwargs: Level of safety(keyname: safety) can be added. The safer, the slower.
         :return:
         """
-        if isinstance(queries, list) and not all(isinstance(q, list) for q in queries):
-            queries = [queries]
+        if isinstance(queries, list) and not all(isinstance(q, Row) for q in queries):
+            raise TypeError(f"Expected a list of Rows, given:\n{queries}")
         safety = kwargs.get("safety", 1)
         if not isinstance(safety, int):
             safety = 1
@@ -66,8 +66,8 @@ class RowParser(AbstractParser):
         chunk_size = math.ceil(len(executing) / safety)
 
         splitted = [
-            executing[0:math.ceil(len(executing) / safety)],
-            *[executing[chunk_size * (i + 1):chunk_size * (i + 2)]
+            executing[0:math.ceil(len(executing) / safety)], # First, gets the first chunk
+            *[executing[chunk_size * (i + 1):chunk_size * (i + 2)]  # Then, splits to equal chunks.
               for i in range(safety - 1)]
         ]
 
@@ -78,7 +78,7 @@ class RowParser(AbstractParser):
                 conn.commit()
 
 
-    def parser(self, queries: list[list[str|TypingRow]], **kwargs) -> list[Executable]:
+    def parser(self, queries: list[Row], **kwargs) -> list[Executable]:
         """
         Controls the table's rows.
 
@@ -127,32 +127,29 @@ class RowParser(AbstractParser):
         :param kwargs: Accepts nothing.
         :return: A list of Executables to execute, each doing different operations.
         """
-        # Validation
-        type_check = lambda: all(isinstance(i, list) for i in queries)
-        check_details = lambda: all(len(i) == 2 for i in queries)
-        check_inner_most = lambda: all(
-                isinstance(i[0], str) and isinstance(i[1], dict)
-                for i in queries
-            )
+        true_queries: list[list[str | dict]] = list(list(iter(query)) for query in queries)
 
+        # Validation
+        def validate():
+            # If is a list
+            check = isinstance(true_queries, list)
+            check = check and all(isinstance(i, list) for i in true_queries)
+            check = check and all(len(i) == 2 for i in true_queries) # Because of operation type + details
+            check = check and all(isinstance(i[0], str) and isinstance(i[1], dict) for i in true_queries)
+            return check
         validator(
             (
                 "queries",
-                queries,
+                true_queries,
                 list,
                 (
                     (
-                        lambda:
-                        type_check()
-                        and check_details()
-                        and check_inner_most()
+                        validate
                     ),
                     "All elements of queries must be lists with two elements, operation type and operation details."
                 )
             )
         )
-
-        del type_check, check_details, check_inner_most
 
         # Creating mappings
         supported_types = [
@@ -168,7 +165,7 @@ class RowParser(AbstractParser):
 
         out = []
 
-        for operation in queries:
+        for operation in true_queries:
             operation_type = operation[0]
             operation_details = operation[1]
 
@@ -187,6 +184,7 @@ class RowParser(AbstractParser):
             )
 
             # Appending
+            # noinspection PyArgumentList
             item = type_mapping[operation_type](operation_details)
 
             out.append(item)
@@ -219,8 +217,8 @@ class RowParser(AbstractParser):
         :param details: Must include the data and the id(i.e., primary) in this.
         :return: an Executable.
         """
-        column_details = details["data"]
-        column_id = details["primary"]
+        column_details = details.get("data")
+        column_id = details.get("primary")
 
         validator(
             (
